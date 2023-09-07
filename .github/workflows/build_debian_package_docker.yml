@@ -56,6 +56,7 @@ jobs:
               cd build-golang && \
               ./scripts/setup-termux.sh && \
               git reset --hard 21694ae13fc47b021262e1693ff76a559afd3930 && \
+              sed -i '/On-device builds without termux-exec are not supported/d' scripts/build/termux_step_setup_variables.sh
               sed -i 's#bin/\$TERMUX_GOLANG_DIRNAME#bin#' packages/golang/build.sh && \
               ./build-package.sh -I golang && \
               cd && \
@@ -63,6 +64,7 @@ jobs:
               cd build-docker && \
               ./scripts/setup-termux.sh && \
               mkdir build && \
+              sed -i '/On-device builds without termux-exec are not supported/d' scripts/build/termux_step_setup_variables.sh
               ./build-package.sh -I -o build --format debian docker \
               "
           docker exec mdtest-${{ matrix.platform }} bash -c 'ls $HOME/build-docker/build'
