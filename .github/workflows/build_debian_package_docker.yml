@@ -1,8 +1,6 @@
 name: Build Debian Package For Docker Used In Termux
 
 on:
-  repository_dispatch:
-    types: [build-mdtest]
   workflow_dispatch:
   
 concurrency:
