@@ -64,7 +64,7 @@ jobs:
               cd build-docker && \
               ./scripts/setup-termux.sh && \
               mkdir build && \
-              sed -i '/On-device builds without termux-exec are not supported/d' scripts/build/termux_step_setup_variables.sh
+              sed -i 's/.*On-device builds without termux-exec are not supported.*/true/g' scripts/build/termux_step_setup_variables.sh
               ./build-package.sh -I -o build --format debian docker \
               "
           docker exec mdtest-${{ matrix.platform }} bash -c 'ls $HOME/build-docker/build'
