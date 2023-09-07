@@ -64,7 +64,7 @@ jobs:
               cd build-docker && \
               ./scripts/setup-termux.sh && \
               mkdir build && \
-              sed -i 's/.*On-device builds without termux-exec are not supported.*/true/g' scripts/build/termux_step_setup_variables.sh
+              sed -i 's/.*On-device builds without termux-exec are not supported.*/# true/g' scripts/build/termux_step_setup_variables.sh
               cat scripts/build/termux_step_setup_variables.sh
               ./build-package.sh -I -o build --format debian docker \
               "
