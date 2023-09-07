@@ -50,7 +50,7 @@ jobs:
           docker pull termux/termux-docker:${{ matrix.platform }}
           docker run --privileged --name mdtest-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c " \
               yes | pkg upgrade -y && \
-              pkg install -y git termux-exec && \
+              pkg install -y git libandroid && \
               cd && \
               git clone https://github.com/termux/termux-packages build-golang && \
               cd build-golang && \
