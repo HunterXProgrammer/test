@@ -28,9 +28,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-      - name: Build Debian Package For Docker
+      - name: Build Debian Package For ${{ matrix.package }}
         run: |
-          echo "${{ env.GITHUB_WORKSPACE }}"
           cd $GITHUB_WORKSPACE
           git clone https://github.com/termux/termux-packages
           cd $(mktemp -q -d)
@@ -44,6 +43,7 @@ jobs:
           sed -i 's/local TERMUX_GO_SHA256=.*/local TERMUX_GO_SHA256=d7ec48cde0d3d2be2c69203bc3e0a44de8660b9c09a6e85c4732a3f7dc442612/' scripts/build/setup/termux_setup_golang.sh
           CONTAINER_NAME=${{ matrix.package }}-${{ matrix.platform }} scripts/run-docker.sh ./build-package.sh -I -a ${{ matrix.platform }} -o build --format debian ${{ matrix.package }}
           echo "deb_name=$(basename "$(cd build && ls ./*\.deb | head -n 1)")" >> $GITHUB_ENV
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
 
       - name: Upload Release
         uses: svenstaro/upload-release-action@v2
