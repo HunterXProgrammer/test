@@ -50,8 +50,8 @@ jobs:
         with:
            repo_token: ${{ secrets.GITHUB_TOKEN }}
            file: ${{ env.deb_dir }}/${{ env.deb_name }}
-           asset_name: ${{ env.deb_name }}
+           asset_name: ${{ matrix.package }}-latest.deb
            tag: "${{ matrix.package }}-debian-package"
            release_name: "Termux Debian Package For ${{ matrix.package }}"
-           body: "test"
+           make_latest: false
            overwrite: true
