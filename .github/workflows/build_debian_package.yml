@@ -7,7 +7,7 @@ concurrency:
   group: build-termux-docker
 
 jobs: 
-  build-termux-docker:
+  build-debian-package:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -33,31 +33,32 @@ jobs:
           git clone https://github.com/termux/termux-packages $GITHUB_WORKSPACE/termux-packages
 
       - name: Check If go1.20.5 Required
-        if: ${{ matrix.package }} == "docker"
         run: |
-          echo yes
-          cd $(mktemp -q -d)
-          rsync -a $GITHUB_WORKSPACE/termux-packages/ termux-packages
-          cd termux-packages
-          git reset --hard 21694ae13fc47b021262e1693ff76a559afd3930
-          rm -rf $GITHUB_WORKSPACE/termux-packages/packages/golang
-          mv packages/golang $GITHUB_WORKSPACE/termux-packages/packages/golang
-          cd $GITHUB_WORKSPACE/termux-packages
-          sed -i 's/local TERMUX_GO_VERSION=.*/local TERMUX_GO_VERSION=go1.20.5/' scripts/build/setup/termux_setup_golang.sh
-          sed -i 's/local TERMUX_GO_SHA256=.*/local TERMUX_GO_SHA256=d7ec48cde0d3d2be2c69203bc3e0a44de8660b9c09a6e85c4732a3f7dc442612/' scripts/build/setup/termux_setup_golang.sh
+          if [ ${{ matrix.package }} == "docker" ]; then
+              cd $(mktemp -q -d)
+              rsync -a $GITHUB_WORKSPACE/termux-packages/ termux-packages
+              cd termux-packages
+              git reset --hard 21694ae13fc47b021262e1693ff76a559afd3930
+              rm -rf $GITHUB_WORKSPACE/termux-packages/packages/golang
+              mv packages/golang $GITHUB_WORKSPACE/termux-packages/packages/golang
+              cd $GITHUB_WORKSPACE/termux-packages
+              sed -i 's/local TERMUX_GO_VERSION=.*/local TERMUX_GO_VERSION=go1.20.5/' scripts/build/setup/termux_setup_golang.sh
+              sed -i 's/local TERMUX_GO_SHA256=.*/local TERMUX_GO_SHA256=d7ec48cde0d3d2be2c69203bc3e0a44de8660b9c09a6e85c4732a3f7dc442612/' scripts/build/setup/termux_setup_golang.sh
+          fi
 
       - name: Build Debian Package For ${{ matrix.package }}
         run: |
           cd $GITHUB_WORKSPACE/termux-packages
           CONTAINER_NAME=${{ matrix.package }}-${{ matrix.platform }} scripts/run-docker.sh ./build-package.sh -I -a ${{ matrix.platform }} -o build --format debian ${{ matrix.package }}
           echo "deb_name=$(basename "$(cd build && ls ./*\.deb | head -n 1)")" >> $GITHUB_ENV
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
           echo "package_version=$(basename "$(cd build && ls ./*\.deb | head -n 1)" | sed -E "s/^${{ matrix.package }}_//" | sed -E "s/_${{ matrix.platform }}\.deb$//")" >> $GITHUB_ENV
 
       - name: Upload Release
         uses: svenstaro/upload-release-action@v2
         with:
            repo_token: ${{ secrets.GITHUB_TOKEN }}
-           file: "termux-packages/build/${{ env.deb_name }}"
+           file: "${{ env.GITHUB_WORKSPACE }}/termux-packages/build/${{ env.deb_name }}"
            asset_name: "${{ matrix.package }}-${{ matrix.platform }}.deb"
            tag: "${{ matrix.package }}-debian-package"
            release_name: "Termux Debian Package For ${{ matrix.package }}"
