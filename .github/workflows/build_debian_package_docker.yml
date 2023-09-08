@@ -52,6 +52,6 @@ jobs:
            file: ${{ env.deb_dir }}/${{ env.deb_name }}
            asset_name: ${{ env.deb_name }}
            tag: "${{ matrix.package }}-debian-package"
-           release_name: "Debian Package For ${{ matrix.package }}"
+           release_name: "Termux Debian Package For ${{ matrix.package }}"
            body: "test"
            overwrite: true
