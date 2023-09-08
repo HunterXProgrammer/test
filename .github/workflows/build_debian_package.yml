@@ -43,15 +43,14 @@ jobs:
           sed -i 's/local TERMUX_GO_SHA256=.*/local TERMUX_GO_SHA256=d7ec48cde0d3d2be2c69203bc3e0a44de8660b9c09a6e85c4732a3f7dc442612/' scripts/build/setup/termux_setup_golang.sh
           CONTAINER_NAME=${{ matrix.package }}-${{ matrix.platform }} scripts/run-docker.sh ./build-package.sh -I -a ${{ matrix.platform }} -o build --format debian ${{ matrix.package }}
           echo "deb_name=$(basename "$(cd build && ls ./*\.deb | head -n 1)")" >> $GITHUB_ENV
-          echo "package_version=$(basename "$(cd build && ls ./*\.deb | head -n 1)" | sed -E "s/^${{ matrix.package }}_//" | sed -E "s/_${{ matrix.platform }}$//")" >> $GITHUB_ENV
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "package_version=$(basename "$(cd build && ls ./*\.deb | head -n 1)" | sed -E "s/^${{ matrix.package }}_//" | sed -E "s/_${{ matrix.platform }}\.deb$//")" >> $GITHUB_ENV
 
       - name: Upload Release
         uses: svenstaro/upload-release-action@v2
         with:
            repo_token: ${{ secrets.GITHUB_TOKEN }}
-           file: "${{ env.GITHUB_WORKSPACE }}/termux-packages/build/${{ env.deb_name }}"
-           asset_name: ${{ matrix.package }}-${{ matrix.platform }}.deb
+           file: "termux-packages/build/${{ env.deb_name }}"
+           asset_name: "${{ matrix.package }}-${{ matrix.platform }}.deb"
            tag: "${{ matrix.package }}-debian-package"
            release_name: "Termux Debian Package For ${{ matrix.package }}"
            body: "Version - ${{ env.package_version }}"
