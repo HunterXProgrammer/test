@@ -34,7 +34,7 @@ jobs:
 
       - name: Check If go1.20.5 Required
         run: |
-          if [ ${{ matrix.package }} == "docker" ]; then
+          if [ "${{ matrix.package }}" == "docker" ]; then
               cd $(mktemp -q -d)
               rsync -a $GITHUB_WORKSPACE/termux-packages/ termux-packages
               cd termux-packages
