@@ -28,10 +28,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-      - name: Build Debian Package For ${{ matrix.package }}
+      - name: Clone Termux-Packages Builder Repo
         run: |
-          cd $GITHUB_WORKSPACE
           git clone https://github.com/termux/termux-packages
+
+      - name: Check If go1.20.5 Required
+        if: ${{ ${{ matrix.package }} == 'docker' }}
+        run: |
+          echo yes
           cd $(mktemp -q -d)
           rsync -a $GITHUB_WORKSPACE/termux-packages/ termux-packages
           cd termux-packages
@@ -41,6 +45,9 @@ jobs:
           cd $GITHUB_WORKSPACE/termux-packages
           sed -i 's/local TERMUX_GO_VERSION=.*/local TERMUX_GO_VERSION=go1.20.5/' scripts/build/setup/termux_setup_golang.sh
           sed -i 's/local TERMUX_GO_SHA256=.*/local TERMUX_GO_SHA256=d7ec48cde0d3d2be2c69203bc3e0a44de8660b9c09a6e85c4732a3f7dc442612/' scripts/build/setup/termux_setup_golang.sh
+
+      - name: Build Debian Package For ${{ matrix.package }}
+        run: |
           CONTAINER_NAME=${{ matrix.package }}-${{ matrix.platform }} scripts/run-docker.sh ./build-package.sh -I -a ${{ matrix.platform }} -o build --format debian ${{ matrix.package }}
           echo "deb_name=$(basename "$(cd build && ls ./*\.deb | head -n 1)")" >> $GITHUB_ENV
           echo "package_version=$(basename "$(cd build && ls ./*\.deb | head -n 1)" | sed -E "s/^${{ matrix.package }}_//" | sed -E "s/_${{ matrix.platform }}\.deb$//")" >> $GITHUB_ENV
