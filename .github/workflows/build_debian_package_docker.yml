@@ -13,7 +13,8 @@ jobs:
       contents: write
     strategy:
       matrix:
-        platform: [x86_64]
+        platform: [arm, aarch64, i686, x86_64]
+        package: [docker]
 
     steps:
       - name: Install Docker
@@ -40,5 +41,17 @@ jobs:
           cd $GITHUB_WORKSPACE/termux-packages
           sed -i 's/local TERMUX_GO_VERSION=.*/local TERMUX_GO_VERSION=go1.20.5/' scripts/build/setup/termux_setup_golang.sh
           sed -i 's/local TERMUX_GO_SHA256=.*/local TERMUX_GO_SHA256=d7ec48cde0d3d2be2c69203bc3e0a44de8660b9c09a6e85c4732a3f7dc442612/' scripts/build/setup/termux_setup_golang.sh
-          CONTAINER_NAME=docker-${{ matrix.platform }} scripts/run-docker.sh ./build-package.sh -I -a aarch64 -o build --format debian docker
-          ls build/*
+          CONTAINER_NAME=${{ matrix.package }}-${{ matrix.platform }} scripts/run-docker.sh ./build-package.sh -I -a aarch64 -o build --format debian ${{ matrix.package }}
+          echo "deb_name="$(basename "$(ls build/* | head -n 1)")"" >> $GITHUB_ENV
+          echo "deb_dir="$(dirname "$(ls build/* | head -n 1)")"" >> $GITHUB_ENV
+
+      - name: Upload Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+           repo_token: ${{ secrets.GITHUB_TOKEN }}
+           file: ${{ env.deb_dir }}/${{ env.deb_name }}
+           asset_name: ${{ env.deb_name }}
+           tag: "${{ matrix.package }}-debian-package"
+           release_name: "Debian Package For ${{ matrix.package }}"
+           body: "test"
+           overwrite: true
