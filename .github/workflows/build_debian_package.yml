@@ -30,7 +30,7 @@ jobs:
 
       - name: Clone Termux-Packages Builder Repo
         run: |
-          git clone https://github.com/termux/termux-packages
+          git clone https://github.com/termux/termux-packages $GITHUB_WORKSPACE/termux-packages
 
       - name: Check If go1.20.5 Required
         if: ${{ matrix.package }} == "docker"
@@ -48,6 +48,7 @@ jobs:
 
       - name: Build Debian Package For ${{ matrix.package }}
         run: |
+          cd $GITHUB_WORKSPACE/termux-packages
           CONTAINER_NAME=${{ matrix.package }}-${{ matrix.platform }} scripts/run-docker.sh ./build-package.sh -I -a ${{ matrix.platform }} -o build --format debian ${{ matrix.package }}
           echo "deb_name=$(basename "$(cd build && ls ./*\.deb | head -n 1)")" >> $GITHUB_ENV
           echo "package_version=$(basename "$(cd build && ls ./*\.deb | head -n 1)" | sed -E "s/^${{ matrix.package }}_//" | sed -E "s/_${{ matrix.platform }}\.deb$//")" >> $GITHUB_ENV
