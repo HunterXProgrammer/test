@@ -30,6 +30,7 @@ jobs:
 
       - name: Build Debian Package For Docker
         run: |
+          echo "${{ env.GITHUB_WORKSPACE }}"
           cd $GITHUB_WORKSPACE
           git clone https://github.com/termux/termux-packages
           cd $(mktemp -q -d)
@@ -48,7 +49,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
            repo_token: ${{ secrets.GITHUB_TOKEN }}
-           file: $GITHUB_WORKSPACE/termux-packages/build/${{ env.deb_name }}
+           file: ${{ env.GITHUB_WORKSPACE }}/termux-packages/build/${{ env.deb_name }}
            asset_name: ${{ matrix.package }}-${{ matrix.platform }}.deb
            tag: "${{ matrix.package }}-debian-package"
            release_name: "Termux Debian Package For ${{ matrix.package }}"
