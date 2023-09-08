@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         platform: [arm, aarch64, i686, x86_64]
-        package: [docker, which]
+        package: [docker]
 
     steps:
       - name: Install Docker
@@ -27,6 +27,14 @@ jobs:
           echo "deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
           sudo apt-get update
           sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+ 
+      - name: Set Build Architecture
+        run: |
+          if [ "${{ matrix.platform }}" = "i686" ]; then
+            echo "arch_name=x86" >> $GITHUB_ENV
+          else
+            echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
+          fi
 
       - name: Clone Termux-Packages Builder Repo
         run: |
@@ -59,7 +67,7 @@ jobs:
         with:
            repo_token: ${{ secrets.GITHUB_TOKEN }}
            file: "${{ env.GITHUB_WORKSPACE }}/termux-packages/build/${{ env.deb_name }}"
-           asset_name: "${{ matrix.package }}-${{ matrix.platform }}.deb"
+           asset_name: "${{ matrix.package }}-${{ env.arch_name }}.deb"
            tag: "debian-package-${{ matrix.package }}"
            release_name: "Termux Debian Package For ${{ matrix.package }}"
            body: "Version - ${{ env.package_version }}"
