@@ -1,29 +1,13 @@
-name: Build MdtestV5
+name: Build Kernel In Termux
 
 on:
-  repository_dispatch:
-    types: [build-mdtest]
   workflow_dispatch:
   
 concurrency:
-  group: check-and-build-mdtest
+  group: build-kernel-termux
 
-jobs:
-  get_commit_hash:
-    runs-on: ubuntu-latest
-    outputs:
-      commit-hash: ${{ steps.get-commit-hash.outputs.commit_hash }}
-    
-    steps:
-      - name: Get Commit Hash
-        id: get-commit-hash
-        run: |
-          git clone https://github.com/tulir/whatsmeow
-          cd whatsmeow
-          echo "commit_hash=$(git show HEAD | grep -Eo '^commit [0-9a-f]{40}' | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-    
-  build_mdtest:
-    needs: get_commit_hash
+jobs:  
+  build_kernel:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -53,7 +37,7 @@ jobs:
             echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
           fi
 
-      - name: Build Mdtest
+      - name: Build Kernel
         run: |
           
           # Support for ARM and AARCH64
