@@ -13,7 +13,7 @@ jobs:
       contents: write
     strategy:
       matrix:
-        platform: [aarch64]
+        platform: [x86_64]
 
     steps:
       - name: Install Docker
