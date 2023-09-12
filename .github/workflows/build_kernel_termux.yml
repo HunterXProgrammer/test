@@ -47,6 +47,6 @@ jobs:
           fi
 
           docker pull termux/termux-docker:${{ matrix.platform }}
-          docker run --privileged --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && pkg install -y git && git clone --depth=1 https://github.com/HunterXProgrammer/Termux-Docker-Kernel-Redmi-Xiaomi -b documentation repo && cd repo && export TERM=xterm-256color && bash build-termux.sh"
+          docker run --privileged --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && pkg install -y git libandroid termux-exec && git clone --depth=1 https://github.com/HunterXProgrammer/Termux-Docker-Kernel-Redmi-Xiaomi -b documentation repo && cd repo && export TERM=xterm-256color && bash build-termux.sh"
           docker ls kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/repo/out
           
