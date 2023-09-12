@@ -1,4 +1,4 @@
-name: [MacOS] Build Kernel In Termux
+name: MacOS - Build Kernel In Termux
 
 on:
   workflow_dispatch:
