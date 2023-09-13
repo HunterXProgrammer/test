@@ -1,0 +1,709 @@
+name: Build Kernel In Termux (Continuous)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: build-kernel-termux-continuous
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x86_64]
+      
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        repository: "HunterXProgrammer/Termux-Docker-Kernel-Redmi-Xiaomi"
+        ref: "documentation"
+        fetch-depth: 1
+
+    - name: Build packages
+      run: |
+        
+    - name: Generate build status and build deps
+      run: |
+        tar cf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar ./*.txt ./debs ./artifacts ./output
+    - name: Upload build deps
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-deps-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-deps
+    - name: Upload build status
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+
+  build-1:
+    runs-on: ubuntu-22.04
+    needs: prepare
+    env:
+      ANDROID_HOME: "/opt/termux/android-sdk"
+      NDK: "/opt/termux/android-ndk"
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      TUR_CONTINUOUS_FLAG: true
+    strategy:
+      matrix:
+        target_arch: [aarch64, arm, i686, x86_64]
+      fail-fast: false
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000
+        submodules: true
+    - name: Merge repos
+      run: ./setup-environment.sh
+    - name: Free additional disk space
+      run: |
+        sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') \
+          mono-runtime-common monodoc-manual ruby
+        sudo apt autoremove -yq
+        sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+    - name: Download build deps
+      uses: actions/download-artifact@v3
+      with:
+        name: build-deps-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-deps
+    - name: Download build status
+      uses: actions/download-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+    - name: Extract build status
+      run: |
+        tar xf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+        rm -f build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+    - name: Build packages
+      run: |
+        if [ "$(cat ./build-status/tur-continuous-finished-flag)" = "true" ]; then
+          exit 0
+        fi
+        declare -a packages
+        for repo_path in $(jq --raw-output 'keys | .[]' repo.json); do
+          repo=$(jq --raw-output '.["'${repo_path}'"].name' repo.json)
+          if [ -f ./built_${repo}_packages.txt ]; then
+            packages="$packages $(cat ./built_${repo}_packages.txt)"
+          fi
+        done
+        if [ ! -z "$packages" ]; then
+          ./continuous-build-wrapper.sh ./build-package.sh -I -a ${{ matrix.target_arch }} $packages
+        fi
+    - name: Generate build status
+      run: |
+        tar cf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar ./*.txt ./debs ./artifacts ./output
+    - name: Upload build status
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+
+  build-2:
+    runs-on: ubuntu-22.04
+    needs: build-1
+    env:
+      ANDROID_HOME: "/opt/termux/android-sdk"
+      NDK: "/opt/termux/android-ndk"
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      TUR_CONTINUOUS_FLAG: true
+    strategy:
+      matrix:
+        target_arch: [aarch64, arm, i686, x86_64]
+      fail-fast: false
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000
+        submodules: true
+    - name: Merge repos
+      run: ./setup-environment.sh
+    - name: Free additional disk space
+      run: |
+        sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') \
+          mono-runtime-common monodoc-manual ruby
+        sudo apt autoremove -yq
+        sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+    - name: Download build deps
+      uses: actions/download-artifact@v3
+      with:
+        name: build-deps-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-deps
+    - name: Download build status
+      uses: actions/download-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+    - name: Extract build status
+      run: |
+        tar xf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+        rm -f build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+    - name: Build packages
+      run: |
+        if [ "$(cat ./build-status/tur-continuous-finished-flag)" = "true" ]; then
+          exit 0
+        fi
+        declare -a packages
+        for repo_path in $(jq --raw-output 'keys | .[]' repo.json); do
+          repo=$(jq --raw-output '.["'${repo_path}'"].name' repo.json)
+          if [ -f ./built_${repo}_packages.txt ]; then
+            packages="$packages $(cat ./built_${repo}_packages.txt)"
+          fi
+        done
+        if [ ! -z "$packages" ]; then
+          ./continuous-build-wrapper.sh ./build-package.sh -I -a ${{ matrix.target_arch }} $packages
+        fi
+    - name: Generate build status
+      run: |
+        tar cf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar ./*.txt ./debs ./artifacts ./output
+    - name: Upload build status
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+
+  build-3:
+    runs-on: ubuntu-22.04
+    needs: build-2
+    env:
+      ANDROID_HOME: "/opt/termux/android-sdk"
+      NDK: "/opt/termux/android-ndk"
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      TUR_CONTINUOUS_FLAG: true
+    strategy:
+      matrix:
+        target_arch: [aarch64, arm, i686, x86_64]
+      fail-fast: false
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000
+        submodules: true
+    - name: Merge repos
+      run: ./setup-environment.sh
+    - name: Free additional disk space
+      run: |
+        sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') \
+          mono-runtime-common monodoc-manual ruby
+        sudo apt autoremove -yq
+        sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+    - name: Download build deps
+      uses: actions/download-artifact@v3
+      with:
+        name: build-deps-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-deps
+    - name: Download build status
+      uses: actions/download-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+    - name: Extract build status
+      run: |
+        tar xf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+        rm -f build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+    - name: Build packages
+      run: |
+        if [ "$(cat ./build-status/tur-continuous-finished-flag)" = "true" ]; then
+          exit 0
+        fi
+        declare -a packages
+        for repo_path in $(jq --raw-output 'keys | .[]' repo.json); do
+          repo=$(jq --raw-output '.["'${repo_path}'"].name' repo.json)
+          if [ -f ./built_${repo}_packages.txt ]; then
+            packages="$packages $(cat ./built_${repo}_packages.txt)"
+          fi
+        done
+        if [ ! -z "$packages" ]; then
+          ./continuous-build-wrapper.sh ./build-package.sh -I -a ${{ matrix.target_arch }} $packages
+        fi
+    - name: Generate build status
+      run: |
+        tar cf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar ./*.txt ./debs ./artifacts ./output
+    - name: Upload build status
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+
+  build-4:
+    runs-on: ubuntu-22.04
+    needs: build-3
+    env:
+      ANDROID_HOME: "/opt/termux/android-sdk"
+      NDK: "/opt/termux/android-ndk"
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      TUR_CONTINUOUS_FLAG: true
+    strategy:
+      matrix:
+        target_arch: [aarch64, arm, i686, x86_64]
+      fail-fast: false
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000
+        submodules: true
+    - name: Merge repos
+      run: ./setup-environment.sh
+    - name: Free additional disk space
+      run: |
+        sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') \
+          mono-runtime-common monodoc-manual ruby
+        sudo apt autoremove -yq
+        sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+    - name: Download build deps
+      uses: actions/download-artifact@v3
+      with:
+        name: build-deps-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-deps
+    - name: Download build status
+      uses: actions/download-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+    - name: Extract build status
+      run: |
+        tar xf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+        rm -f build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+    - name: Build packages
+      run: |
+        if [ "$(cat ./build-status/tur-continuous-finished-flag)" = "true" ]; then
+          exit 0
+        fi
+        declare -a packages
+        for repo_path in $(jq --raw-output 'keys | .[]' repo.json); do
+          repo=$(jq --raw-output '.["'${repo_path}'"].name' repo.json)
+          if [ -f ./built_${repo}_packages.txt ]; then
+            packages="$packages $(cat ./built_${repo}_packages.txt)"
+          fi
+        done
+        if [ ! -z "$packages" ]; then
+          ./continuous-build-wrapper.sh ./build-package.sh -I -a ${{ matrix.target_arch }} $packages
+        fi
+    - name: Generate build status
+      run: |
+        tar cf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar ./*.txt ./debs ./artifacts ./output
+    - name: Upload build status
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+
+  build-5:
+    runs-on: ubuntu-22.04
+    needs: build-4
+    env:
+      ANDROID_HOME: "/opt/termux/android-sdk"
+      NDK: "/opt/termux/android-ndk"
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      TUR_CONTINUOUS_FLAG: true
+    strategy:
+      matrix:
+        target_arch: [aarch64, arm, i686, x86_64]
+      fail-fast: false
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000
+        submodules: true
+    - name: Merge repos
+      run: ./setup-environment.sh
+    - name: Free additional disk space
+      run: |
+        sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') \
+          mono-runtime-common monodoc-manual ruby
+        sudo apt autoremove -yq
+        sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+    - name: Download build deps
+      uses: actions/download-artifact@v3
+      with:
+        name: build-deps-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-deps
+    - name: Download build status
+      uses: actions/download-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+    - name: Extract build status
+      run: |
+        tar xf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+        rm -f build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+    - name: Build packages
+      run: |
+        if [ "$(cat ./build-status/tur-continuous-finished-flag)" = "true" ]; then
+          exit 0
+        fi
+        declare -a packages
+        for repo_path in $(jq --raw-output 'keys | .[]' repo.json); do
+          repo=$(jq --raw-output '.["'${repo_path}'"].name' repo.json)
+          if [ -f ./built_${repo}_packages.txt ]; then
+            packages="$packages $(cat ./built_${repo}_packages.txt)"
+          fi
+        done
+        if [ ! -z "$packages" ]; then
+          ./continuous-build-wrapper.sh ./build-package.sh -I -a ${{ matrix.target_arch }} $packages
+        fi
+    - name: Generate build status
+      run: |
+        tar cf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar ./*.txt ./debs ./artifacts ./output
+    - name: Upload build status
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+
+  build-6:
+    runs-on: ubuntu-22.04
+    needs: build-5
+    env:
+      ANDROID_HOME: "/opt/termux/android-sdk"
+      NDK: "/opt/termux/android-ndk"
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      TUR_CONTINUOUS_FLAG: true
+    strategy:
+      matrix:
+        target_arch: [aarch64, arm, i686, x86_64]
+      fail-fast: false
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000
+        submodules: true
+    - name: Merge repos
+      run: ./setup-environment.sh
+    - name: Free additional disk space
+      run: |
+        sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') \
+          mono-runtime-common monodoc-manual ruby
+        sudo apt autoremove -yq
+        sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+    - name: Download build deps
+      uses: actions/download-artifact@v3
+      with:
+        name: build-deps-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-deps
+    - name: Download build status
+      uses: actions/download-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+    - name: Extract build status
+      run: |
+        tar xf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+        rm -f build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+    - name: Build packages
+      run: |
+        if [ "$(cat ./build-status/tur-continuous-finished-flag)" = "true" ]; then
+          exit 0
+        fi
+        declare -a packages
+        for repo_path in $(jq --raw-output 'keys | .[]' repo.json); do
+          repo=$(jq --raw-output '.["'${repo_path}'"].name' repo.json)
+          if [ -f ./built_${repo}_packages.txt ]; then
+            packages="$packages $(cat ./built_${repo}_packages.txt)"
+          fi
+        done
+        if [ ! -z "$packages" ]; then
+          ./continuous-build-wrapper.sh ./build-package.sh -I -a ${{ matrix.target_arch }} $packages
+        fi
+    - name: Generate build status
+      run: |
+        tar cf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar ./*.txt ./debs ./artifacts ./output
+    - name: Upload build status
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+
+  build-7:
+    runs-on: ubuntu-22.04
+    needs: build-6
+    env:
+      ANDROID_HOME: "/opt/termux/android-sdk"
+      NDK: "/opt/termux/android-ndk"
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      TUR_CONTINUOUS_FLAG: true
+    strategy:
+      matrix:
+        target_arch: [aarch64, arm, i686, x86_64]
+      fail-fast: false
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000
+        submodules: true
+    - name: Merge repos
+      run: ./setup-environment.sh
+    - name: Free additional disk space
+      run: |
+        sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') \
+          mono-runtime-common monodoc-manual ruby
+        sudo apt autoremove -yq
+        sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+    - name: Download build deps
+      uses: actions/download-artifact@v3
+      with:
+        name: build-deps-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-deps
+    - name: Download build status
+      uses: actions/download-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+    - name: Extract build status
+      run: |
+        tar xf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+        rm -f build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+    - name: Build packages
+      run: |
+        if [ "$(cat ./build-status/tur-continuous-finished-flag)" = "true" ]; then
+          exit 0
+        fi
+        declare -a packages
+        for repo_path in $(jq --raw-output 'keys | .[]' repo.json); do
+          repo=$(jq --raw-output '.["'${repo_path}'"].name' repo.json)
+          if [ -f ./built_${repo}_packages.txt ]; then
+            packages="$packages $(cat ./built_${repo}_packages.txt)"
+          fi
+        done
+        if [ ! -z "$packages" ]; then
+          ./continuous-build-wrapper.sh ./build-package.sh -I -a ${{ matrix.target_arch }} $packages
+        fi
+    - name: Generate build status
+      run: |
+        tar cf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar ./*.txt ./debs ./artifacts ./output
+    - name: Upload build status
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+
+  build-8:
+    runs-on: ubuntu-22.04
+    needs: build-7
+    env:
+      ANDROID_HOME: "/opt/termux/android-sdk"
+      NDK: "/opt/termux/android-ndk"
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      TUR_CONTINUOUS_FLAG: true
+    strategy:
+      matrix:
+        target_arch: [aarch64, arm, i686, x86_64]
+      fail-fast: false
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000
+        submodules: true
+    - name: Merge repos
+      run: ./setup-environment.sh
+    - name: Free additional disk space
+      run: |
+        sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') \
+          mono-runtime-common monodoc-manual ruby
+        sudo apt autoremove -yq
+        sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+    - name: Download build deps
+      uses: actions/download-artifact@v3
+      with:
+        name: build-deps-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-deps
+    - name: Download build status
+      uses: actions/download-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+    - name: Extract build status
+      run: |
+        tar xf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+        rm -f build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+    - name: Build packages
+      run: |
+        if [ "$(cat ./build-status/tur-continuous-finished-flag)" = "true" ]; then
+          exit 0
+        fi
+        declare -a packages
+        for repo_path in $(jq --raw-output 'keys | .[]' repo.json); do
+          repo=$(jq --raw-output '.["'${repo_path}'"].name' repo.json)
+          if [ -f ./built_${repo}_packages.txt ]; then
+            packages="$packages $(cat ./built_${repo}_packages.txt)"
+          fi
+        done
+        if [ ! -z "$packages" ]; then
+          ./continuous-build-wrapper.sh ./build-package.sh -I -a ${{ matrix.target_arch }} $packages
+        fi
+    - name: Generate build status
+      run: |
+        tar cf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar ./*.txt ./debs ./artifacts ./output
+    - name: Upload build status
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+
+  build-9:
+    runs-on: ubuntu-22.04
+    needs: build-8
+    env:
+      ANDROID_HOME: "/opt/termux/android-sdk"
+      NDK: "/opt/termux/android-ndk"
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      TUR_CONTINUOUS_FLAG: true
+    strategy:
+      matrix:
+        target_arch: [aarch64, arm, i686, x86_64]
+      fail-fast: false
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000
+        submodules: true
+    - name: Merge repos
+      run: ./setup-environment.sh
+    - name: Free additional disk space
+      run: |
+        sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') \
+          mono-runtime-common monodoc-manual ruby
+        sudo apt autoremove -yq
+        sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+    - name: Download build deps
+      uses: actions/download-artifact@v3
+      with:
+        name: build-deps-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-deps
+    - name: Download build status
+      uses: actions/download-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+    - name: Extract build status
+      run: |
+        tar xf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+        rm -f build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+    - name: Build packages
+      run: |
+        if [ "$(cat ./build-status/tur-continuous-finished-flag)" = "true" ]; then
+          exit 0
+        fi
+        declare -a packages
+        for repo_path in $(jq --raw-output 'keys | .[]' repo.json); do
+          repo=$(jq --raw-output '.["'${repo_path}'"].name' repo.json)
+          if [ -f ./built_${repo}_packages.txt ]; then
+            packages="$packages $(cat ./built_${repo}_packages.txt)"
+          fi
+        done
+        if [ ! -z "$packages" ]; then
+          ./continuous-build-wrapper.sh ./build-package.sh -I -a ${{ matrix.target_arch }} $packages
+        fi
+    - name: Generate build status
+      run: |
+        tar cf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar ./*.txt ./debs ./artifacts ./output
+    - name: Upload build status
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+
+  finished-build:
+    runs-on: ubuntu-22.04
+    needs: build-9
+    env:
+      ANDROID_HOME: "/opt/termux/android-sdk"
+      NDK: "/opt/termux/android-ndk"
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+    strategy:
+      matrix:
+        target_arch: [aarch64, arm, i686, x86_64]
+      fail-fast: false
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1000
+        submodules: true
+    - name: Merge repos
+      run: ./setup-environment.sh
+    - name: Free additional disk space
+      run: |
+        sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') \
+          mono-runtime-common monodoc-manual ruby
+        sudo apt autoremove -yq
+        sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+    - name: Download build status
+      uses: actions/download-artifact@v3
+      with:
+        name: build-status-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./build-status
+    - name: Extract build status
+      run: |
+        tar xf build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+        rm -f build-status/${{ matrix.target_arch }}-${{ github.sha }}.tar
+    - name: Check build status
+      run: |
+        if [ "$(cat ./build-status/tur-continuous-finished-flag)" != "true" ]; then
+          echo "[ERROR]: Need more time to build!"
+          exit 1
+        fi
+    - name: Generate build artifacts
+      if: always()
+      run: |
+        test -d tur/output && mv tur/output/* ./output/
+        for repo in $(jq --raw-output '.[].name' repo.json); do
+          # Put package lists into directory with *.deb files so they will be transferred to
+          # upload job.
+          test -f ./built_${repo}_packages.txt && mv ./built_${repo}_packages.txt ./debs/
+          test -f ./built_${repo}_subpackages.txt && cat ./built_${repo}_subpackages.txt >> ./debs/built_${repo}_packages.txt \
+            && rm ./built_${repo}_subpackages.txt
+          test -f ./deleted_${repo}_packages.txt && mv ./deleted_${repo}_packages.txt ./debs/
+          # Move only debs from built_packages into debs/ folder before
+          # creating an archive.
+          while read -r pkg; do
+            # Match both $pkg.deb and $pkg-static.deb.
+            find output \( -name "$pkg_*.deb" -o -name "$pkg-static_*.deb" \) -type f -print0 | xargs -0r mv -t debs/
+          done < <(cat ./debs/built_${repo}_packages.txt)
+        done
+        # Files containing certain symbols (e.g. ":") will cause failure in actions/upload-artifact.
+        # Archiving *.deb files in a tarball to avoid issues with uploading.
+        tar cf artifacts/debs-${{ matrix.target_arch }}-${{ github.sha }}.tar debs
+    - name: Checksums for built *.deb files
+      if: always()
+      run: |
+        find debs -type f -name "*.deb" -exec sha256sum "{}" \; | sort -k2
+    - name: Store *.deb files
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: debs-${{ matrix.target_arch }}-${{ github.sha }}
+        path: ./artifacts
+    - name: Upload to temporary release.
+      if: github.event_name != 'pull_request'
+      run: | 
+          for i in ./artifacts/*;do
+            gh release upload -R https://github.com/termux-user-repository/tur "0.1" $i
+            echo "$i  uploaded"
+          done
+
+  trigeer:
+    runs-on: ubuntu-22.04
+    if: github.event_name != 'pull_request'
+    needs: finished-build
+    steps:
+    - name: Trigger workflow in dists repository
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        EVENT: "from_tur"
+        ORG: "termux-user-repository"
+        REPO: "dists"
+      run: |
+        curl -d "{\"event_type\": \"${EVENT}\"}" -H "Content-Type: application/json" -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.everest-preview+json" "https://api.github.com/repos/${ORG}/${REPO}/dispatches"
