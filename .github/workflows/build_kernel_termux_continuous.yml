@@ -49,7 +49,7 @@ jobs:
 
       - name: Generate build status and build deps
         run: |
-          mv kernel-continuous-build-finish build-status
+          mv ${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish build-status
           zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}
     
       - name: Upload build deps
@@ -111,7 +111,7 @@ jobs:
       - name: Generate build status and build deps
         run: |
           echo "$(cat ./build-status/kernel-continuous-build-finish)"
-          mv kernel-continuous-build-finish build-status
+          mv ${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish build-status
           zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}
 
   finished-build:
