@@ -43,7 +43,7 @@ jobs:
           ls -rla ${{ env.KERNEL_REPO_DIR }}
           docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "sleep infinity"
           docker cp ${{ env.KERNEL_REPO_DIR }} kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "yes | pkg upgrade -y && cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 10 bash build-termux.sh && echo true > kernel-continuous-build-finish || echo ok && ls -rla && whoami && touch \$HOME/${{ env.KERNEL_REPO_DIR }}/testing && ls -rla && echo false > kernel-continuous-build-finish && pwd"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "yes | pkg upgrade -y && cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 10 bash build-termux.sh && echo true > kernel-continuous-build-finish || echo ok && ls -rla && whoami && touch testing && ls -rla && echo false >> testing && echo false > kernel-continuous-build-finish && pwd"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }} ${{ env.KERNEL_REPO_DIR }}
 
       - name: Generate build status and build deps
