@@ -53,7 +53,7 @@ jobs:
       - name: Generate build status and build deps
         run: |
           mv kernel-continuous-build-finish build-status
-          zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
+          zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
     
       - name: Upload build deps
         uses: actions/upload-artifact@v3
@@ -102,7 +102,7 @@ jobs:
           if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
             exit 0
           fi
-          unzip -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
+          unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
           docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
           rm ${{ env.KERNEL_REPO_DIR }}.tar
@@ -116,7 +116,7 @@ jobs:
       - name: Generate build status and build deps
         run: |
           mv kernel-continuous-build-finish build-status
-          zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
+          zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
     
       - name: Upload build deps
         uses: actions/upload-artifact@v3
@@ -168,7 +168,7 @@ jobs:
             echo "[ERROR]: Need more time to build!"
           exit 1
           fi
-          unzip -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
+          unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
           docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
           rm ${{ env.KERNEL_REPO_DIR }}.tar
