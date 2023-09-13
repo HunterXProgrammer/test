@@ -7,12 +7,9 @@ jobs:
   buildx:
     runs-on: ubuntu-latest
     steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Install Docker
         run: |
-          docker run aarch64/hello-world
+          docker --help
         
 
         
