@@ -24,7 +24,7 @@ jobs:
         run: |
           if [ "${{ matrix.platform }}" = "i686" ]; then
             echo "arch_name=x86" >> $GITHUB_ENV
-          ee
+          else
             echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
           fi
 
@@ -80,7 +80,7 @@ jobs:
         run: |
           if [ "${{ matrix.platform }}" = "i686" ]; then
             echo "arch_name=x86" >> $GITHUB_ENV
-          ee
+          else
             echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
           fi
 
@@ -147,7 +147,7 @@ jobs:
         run: |
           if [ "${{ matrix.platform }}" = "i686" ]; then
             echo "arch_name=x86" >> $GITHUB_ENV
-          ee
+          else
             echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
           fi
 
