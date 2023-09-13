@@ -5,12 +5,12 @@ on:
 
 concurrency:
   group: build-kernel-termux-continuous
-  
+
 env:
   KERNEL_REPO: "HunterXProgrammer/Termux-Docker-Kernel-Redmi-Xiaomi"
   KERNEL_REPO_DIR: "Termux-Docker-Kernel-Redmi-Xiaomi"
   KERNEL_REPO_BRANCH: "documentation"
-  
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [x86_64]
-      
+
     steps:
       - name: Set Build Architecture
         run: |
@@ -36,7 +36,7 @@ jobs:
           path: "${{ env.KERNEL_REPO_DIR }}"
           fetch-depth: 1
 
-      - name: Build packages
+      - name: Build kernel
         run: |
           mkdir -p build-deps
           mkdir -p build-status
@@ -74,7 +74,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [x86_64]
-      
+
     steps:
       - name: Set Build Architecture
         run: |
@@ -93,16 +93,18 @@ jobs:
       - name: Check build status
         run: |
           if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
-            exit 0
+            echo "build_complete=true" >> $GITHUB_ENV
           fi
  
       - name: Download build deps
+        if: env.build_completed != "true"
         uses: actions/download-artifact@v3
         with:
           name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-deps   
-          
+
       - name: Build kernel
+        if: env.build_completed != "true"
         run: |
           unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
@@ -114,24 +116,26 @@ jobs:
           docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && rm kernel-continuous-build-finish"
           docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
           docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-        
+
       - name: Generate build status and build deps
+        if: env.build_completed != "true"
         run: |
           mv kernel-continuous-build-finish build-status
           zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
 
       - name: Upload build status
+        if: env.build_completed != "true"
         uses: actions/upload-artifact@v3
         with:
           name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-status
 
       - name: Upload build deps
+        if: env.build_completed != "true"
         uses: actions/upload-artifact@v3
         with:
           name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-deps
-
 
   finished-build:
     if: always()
@@ -141,7 +145,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [x86_64]
-      
+
     steps:
       - name: Set Build Architecture
         run: |
@@ -161,15 +165,15 @@ jobs:
         run: |
           if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
             echo "[ERROR]: Need more time to build!"
-          exit 1
+            exit 1
           fi
-          
+
       - name: Download build deps
         uses: actions/download-artifact@v3
         with:
           name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-deps
-          
+
       - name: Prepare Release
         run: |
           unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
