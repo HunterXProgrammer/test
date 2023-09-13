@@ -41,7 +41,7 @@ jobs:
           mkdir -p build-deps
           mkdir -p build-status
           ls -rla ${{ env.KERNEL_REPO_DIR }}
-          docker run --name kernel-builder-${{ matrix.platform }} -t termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y"
+          docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && sleep infinity"
           docker cp ${{ env.KERNEL_REPO_DIR }} kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
           docker exec kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "cd ${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 1m bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }} ${{ env.KERNEL_REPO_DIR }}
@@ -101,7 +101,7 @@ jobs:
           unzip -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
           ls -rla ${{ env.KERNEL_REPO_DIR }}
-          docker run --name kernel-builder-${{ matrix.platform }} -t termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y"
+          docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && sleep infinity"
           docker cp ${{ env.KERNEL_REPO_DIR }} kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
           docker exec kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "cd ${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 1m bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO }} ${{ env.KERNEL_REPO_DIR }}
