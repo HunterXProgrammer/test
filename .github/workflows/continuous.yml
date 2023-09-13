@@ -40,18 +40,20 @@ jobs:
         run: |
           mkdir -p build-deps
           mkdir -p build-status
-          ls -rla ${{ env.KERNEL_REPO_DIR }}
           docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "sleep infinity"
           docker cp ${{ env.KERNEL_REPO_DIR }} kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
           rm -rf ${{ env.KERNEL_REPO_DIR }}
           docker exec -u root kernel-builder-${{ matrix.platform }} bash -c "chown -R system:system ${{ env.KERNEL_REPO_DIR }} && chgrp -R system ${{ env.KERNEL_REPO_DIR }}"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "yes | pkg upgrade -y && cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 10 bash build-termux.sh &&echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
-          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }} ${{ env.KERNEL_REPO_DIR }}
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "yes | pkg upgrade -y && cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 10 bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && rm kernel-continuous-build-finish"
+          docker commit -p kernel-builder-${{ matrix.platform }} ${{ env.KERNEL_REPO_DIR }}
+          docker save -o ${{ env.KERNEL_REPO_DIR }}.tar ${{ env.KERNEL_REPO_DIR }}
 
       - name: Generate build status and build deps
         run: |
-          mv ${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish build-status
-          zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}
+          mv kernel-continuous-build-finish build-status
+          zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
     
       - name: Upload build deps
         uses: actions/upload-artifact@v3
@@ -102,19 +104,19 @@ jobs:
           fi
           unzip -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
-          ls -rla ${{ env.KERNEL_REPO_DIR }}
-          docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "sleep infinity"
-          docker cp ${{ env.KERNEL_REPO_DIR }} kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
-          rm -rf ${{ env.KERNEL_REPO_DIR }}
-          docker exec -u root kernel-builder-${{ matrix.platform }} bash -c "chown -R system:system ${{ env.KERNEL_REPO_DIR }} && chgrp -R system ${{ env.KERNEL_REPO_DIR }}"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "yes | pkg upgrade -y && cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 1m bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
-          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO }} ${{ env.KERNEL_REPO_DIR }}
+          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
+          rm ${{ env.KERNEL_REPO_DIR }}.tar
+          docker run -d --name kernel-builder-${{ matrix.platform }} ${{ env.KERNEL_REPO_DIR }} bash -c "sleep infinity"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 10 bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && rm kernel-continuous-build-finish"
+          docker commit -p kernel-builder-${{ matrix.platform }} ${{ env.KERNEL_REPO_DIR }}
+          docker save -o ${{ env.KERNEL_REPO_DIR }}.tar ${{ env.KERNEL_REPO_DIR }}
         
       - name: Generate build status and build deps
         run: |
-          echo "$(cat ./build-status/kernel-continuous-build-finish)"
-          mv ${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish build-status
-          zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}
+          mv kernel-continuous-build-finish build-status
+          zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
 
   finished-build:
     runs-on: ubuntu-latest
@@ -153,8 +155,13 @@ jobs:
             echo "[ERROR]: Need more time to build!"
           exit 1
           fi
-          
-          echo "ZIPNAME=$(cd ${{ env.KERNEL_REPO_DIR }} && basename $(ls out/*\.zip | head -n 1))" >> $GITHUB_ENV
+          unzip -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
+          rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
+          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
+          rm ${{ env.KERNEL_REPO_DIR }}.tar
+          docker run -d --name kernel-builder-${{ matrix.platform }} ${{ env.KERNEL_REPO_DIR }} bash -c "sleep infinity"
+          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
+          echo "ZIPNAME=$(basename $(ls out/*\.zip | head -n 1))" >> $GITHUB_ENV
 
       - name: Upload Release
         uses: svenstaro/upload-release-action@v2
