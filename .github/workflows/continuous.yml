@@ -98,14 +98,14 @@ jobs:
           echo "build_complete=true" >> $GITHUB_ENV
 
       - name: Download build deps
-        if: env.build_completed != 'true'
+        if: ${{ env.build_completed != 'true' }}
         uses: actions/download-artifact@v3
         with:
           name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-deps   
 
       - name: Build kernel
-        if: env.build_completed != 'true'
+        if: ${{ env.build_completed != 'true' }}
         run: |
           unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
@@ -119,20 +119,20 @@ jobs:
           docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
 
       - name: Generate build status and build deps
-        if: env.build_completed != 'true'
+        if: ${{ env.build_completed != 'true' }}
         run: |
           mv kernel-continuous-build-finish build-status
           zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
 
       - name: Upload build status
-        if: env.build_completed != 'true'
+        if: ${{ env.build_completed != 'true' }}
         uses: actions/upload-artifact@v3
         with:
           name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-status
 
       - name: Upload build deps
-        if: env.build_completed != 'true'
+        if: ${{ env.build_completed != 'true' }}
         uses: actions/upload-artifact@v3
         with:
           name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
