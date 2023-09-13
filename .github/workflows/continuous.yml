@@ -55,18 +55,18 @@ jobs:
         run: |
           mv kernel-continuous-build-finish build-status
           zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
-    
-      - name: Upload build deps
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-deps
-          
+
       - name: Upload build status
         uses: actions/upload-artifact@v3
         with:
           name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-status
+
+      - name: Upload build deps
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
+          path: ./build-deps
 
   build-1:
     runs-on: ubuntu-latest
