@@ -95,7 +95,8 @@ jobs:
           if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
             echo "build_complete=true" >> $GITHUB_ENV
           fi
- 
+          echo "build_complete=true" >> $GITHUB_ENV
+
       - name: Download build deps
         if: env.build_completed != "true"
         uses: actions/download-artifact@v3
