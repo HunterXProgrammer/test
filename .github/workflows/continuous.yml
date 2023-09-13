@@ -38,7 +38,6 @@ jobs:
 
       - name: Build packages
         run: |
-          exit 1
           mkdir -p build-deps
           mkdir -p build-status
           docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "sleep infinity"
