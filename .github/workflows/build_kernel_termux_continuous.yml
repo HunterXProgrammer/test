@@ -39,6 +39,7 @@ jobs:
         run: |
           mkdir -p build-deps
           mkdir -p build-status
+          ls -rla .
           ls -rla ${{ env.KERNEL_REPO_DIR }}
           docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && exit 0"
           docker mv ${{ env.KERNEL_REPO_DIR }} kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
