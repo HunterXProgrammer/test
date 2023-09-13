@@ -28,32 +28,27 @@ jobs:
             echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
           fi
 
-      - name: Clone repository
-        uses: actions/checkout@v4
-        with:
-          repository: "${{ env.KERNEL_REPO }}"
-          ref: "${{ env.KERNEL_REPO_BRANCH }}"
-          path: "${{ env.KERNEL_REPO_DIR }}"
-          fetch-depth: 1
-
-      - name: Build kernel
+      - name: Free additional disk space
         run: |
-          mkdir -p build-deps
-          mkdir -p build-status
+          sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') mono-runtime-common monodoc-manual ruby
+          sudo apt autoremove -yq
+          sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+
+      - name: Prepare build image
+        run: |
+          mkdir -p ./build-deps ./build-status ./build-image
           docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "sleep infinity"
-          docker cp ${{ env.KERNEL_REPO_DIR }} kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
-          rm -rf ${{ env.KERNEL_REPO_DIR }}
-          docker exec -u root kernel-builder-${{ matrix.platform }} bash -c "chown -R system:system ${{ env.KERNEL_REPO_DIR }} && chgrp -R system ${{ env.KERNEL_REPO_DIR }}"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "yes | pkg upgrade -y && cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
-          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && rm kernel-continuous-build-finish"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "yes | pkg upgrade -y && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 ${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }}"
           docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
           docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
+          echo false > kernel-continuous-build-finish
+          mkdir -p out
 
       - name: Generate build status and build deps
         run: |
           mv kernel-continuous-build-finish build-status
-          zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
+          zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip out
+          zip -r9q build-image/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
 
       - name: Upload build status
         uses: actions/upload-artifact@v3
@@ -66,6 +61,12 @@ jobs:
         with:
           name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-deps
+
+      - name: Upload build image
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-image-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
+          path: ./build-image
 
   build-1:
     runs-on: ubuntu-latest
@@ -96,32 +97,51 @@ jobs:
             echo "build_complete=true" >> $GITHUB_ENV
           fi
 
+      - name: Free additional disk space
+        if: ${{ env.build_completed != 'true' }}
+        run: |
+          sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') mono-runtime-common monodoc-manual ruby
+          sudo apt autoremove -yq
+          sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+
       - name: Download build deps
         if: ${{ env.build_completed != 'true' }}
         uses: actions/download-artifact@v3
         with:
           name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-deps   
+          path: ./build-deps
+
+      - name: Download build image
+        if: ${{ env.build_completed != 'true' }}
+        uses: actions/download-artifact@v3
+        with:
+          name: build-image-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
+          path: ./build-image
 
       - name: Build kernel
         if: ${{ env.build_completed != 'true' }}
         run: |
+          unzip -qq -o build-image/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
+          rm -rf build-image/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
+          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
+          rm ${{ env.KERNEL_REPO_DIR }}.tar
           unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
-          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
-          rm ${{ env.KERNEL_REPO_DIR }}.tar
           docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+          docker cp out kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
+          rm -rf out
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 1m bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && rm kernel-continuous-build-finish"
-          docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-          docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
+          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
+          docker stop kernel-builder-${{ matrix.platform }}
+          docker rm -f kernel-builder-${{ matrix.platform }}
+          docker rmi -f $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
 
       - name: Generate build status and build deps
         if: ${{ env.build_completed != 'true' }}
         run: |
           mv kernel-continuous-build-finish build-status
-          zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
+          zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip out
 
       - name: Upload build status
         if: ${{ env.build_completed != 'true' }}
@@ -137,7 +157,8 @@ jobs:
           name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-deps
 
-  build-2:
+  finished-build:
+    if: always()
     runs-on: ubuntu-latest
     needs: build-1
     strategy:
@@ -162,288 +183,7 @@ jobs:
 
       - name: Check build status
         run: |
-          if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
-            echo "build_complete=true" >> $GITHUB_ENV
-          fi
-
-      - name: Download build deps
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/download-artifact@v3
-        with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-deps   
-
-      - name: Build kernel
-        if: ${{ env.build_completed != 'true' }}
-        run: |
-          unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
-          rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
-          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
-          rm ${{ env.KERNEL_REPO_DIR }}.tar
-          docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
-          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && rm kernel-continuous-build-finish"
-          docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-          docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-
-      - name: Generate build status and build deps
-        if: ${{ env.build_completed != 'true' }}
-        run: |
-          mv kernel-continuous-build-finish build-status
-          zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
-
-      - name: Upload build status
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-status
-
-      - name: Upload build deps
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-deps
-
-  build-3:
-    runs-on: ubuntu-latest
-    needs: build-2
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [x86_64]
-
-    steps:
-      - name: Set Build Architecture
-        run: |
-          if [ "${{ matrix.platform }}" = "i686" ]; then
-            echo "arch_name=x86" >> $GITHUB_ENV
-          else
-            echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
-          fi
-
-      - name: Download build status
-        uses: actions/download-artifact@v3
-        with:
-          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-status
-
-      - name: Check build status
-        run: |
-          if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
-            echo "build_complete=true" >> $GITHUB_ENV
-          fi
-
-      - name: Download build deps
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/download-artifact@v3
-        with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-deps   
-
-      - name: Build kernel
-        if: ${{ env.build_completed != 'true' }}
-        run: |
-          unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
-          rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
-          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
-          rm ${{ env.KERNEL_REPO_DIR }}.tar
-          docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
-          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && rm kernel-continuous-build-finish"
-          docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-          docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-
-      - name: Generate build status and build deps
-        if: ${{ env.build_completed != 'true' }}
-        run: |
-          mv kernel-continuous-build-finish build-status
-          zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
-
-      - name: Upload build status
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-status
-
-      - name: Upload build deps
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-deps
-
-  build-4:
-    runs-on: ubuntu-latest
-    needs: build-3
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [x86_64]
-
-    steps:
-      - name: Set Build Architecture
-        run: |
-          if [ "${{ matrix.platform }}" = "i686" ]; then
-            echo "arch_name=x86" >> $GITHUB_ENV
-          else
-            echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
-          fi
-
-      - name: Download build status
-        uses: actions/download-artifact@v3
-        with:
-          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-status
-
-      - name: Check build status
-        run: |
-          if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
-            echo "build_complete=true" >> $GITHUB_ENV
-          fi
-
-      - name: Download build deps
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/download-artifact@v3
-        with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-deps   
-
-      - name: Build kernel
-        if: ${{ env.build_completed != 'true' }}
-        run: |
-          unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
-          rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
-          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
-          rm ${{ env.KERNEL_REPO_DIR }}.tar
-          docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
-          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && rm kernel-continuous-build-finish"
-          docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-          docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-
-      - name: Generate build status and build deps
-        if: ${{ env.build_completed != 'true' }}
-        run: |
-          mv kernel-continuous-build-finish build-status
-          zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
-
-      - name: Upload build status
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-status
-
-      - name: Upload build deps
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-deps
-
-  build-5:
-    runs-on: ubuntu-latest
-    needs: build-4
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [x86_64]
-
-    steps:
-      - name: Set Build Architecture
-        run: |
-          if [ "${{ matrix.platform }}" = "i686" ]; then
-            echo "arch_name=x86" >> $GITHUB_ENV
-          else
-            echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
-          fi
-
-      - name: Download build status
-        uses: actions/download-artifact@v3
-        with:
-          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-status
-
-      - name: Check build status
-        run: |
-          if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
-            echo "build_complete=true" >> $GITHUB_ENV
-          fi
-
-      - name: Download build deps
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/download-artifact@v3
-        with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-deps   
-
-      - name: Build kernel
-        if: ${{ env.build_completed != 'true' }}
-        run: |
-          unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
-          rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
-          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
-          rm ${{ env.KERNEL_REPO_DIR }}.tar
-          docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
-          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && rm kernel-continuous-build-finish"
-          docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-          docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-
-      - name: Generate build status and build deps
-        if: ${{ env.build_completed != 'true' }}
-        run: |
-          mv kernel-continuous-build-finish build-status
-          zip -r9q build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
-
-      - name: Upload build status
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-status
-
-      - name: Upload build deps
-        if: ${{ env.build_completed != 'true' }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-deps
-
-  finished-build:
-    if: always()
-    runs-on: ubuntu-latest
-    needs: build-5
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [x86_64]
-
-    steps:
-      - name: Set Build Architecture
-        run: |
-          if [ "${{ matrix.platform }}" = "i686" ]; then
-            echo "arch_name=x86" >> $GITHUB_ENV
-          else
-            echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
-          fi
-
-      - name: Download build status
-        uses: actions/download-artifact@v3
-        with:
-          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
-          path: ./build-status
-
-      - name: Check build status
-        run: |
-          if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
+          if [ "$(cat ./build-status/kernel-continuous-build-finish)" != "true" ]; then
             echo "[ERROR]: Need more time to build!"
             exit 1
           fi
@@ -458,17 +198,13 @@ jobs:
         run: |
           unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
-          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
-          rm ${{ env.KERNEL_REPO_DIR }}.tar
-          docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity"
-          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
           echo "ZIPNAME=$(basename $(ls out/*\.zip | head -n 1))" >> $GITHUB_ENV
 
       - name: Upload Release
         uses: svenstaro/upload-release-action@v2
         with:
            repo_token: ${{ secrets.GITHUB_TOKEN }}
-           file: ${{ env.KERNEL_REPO_DIR }}/out/${{ env.ZIPNAME }}
+           file: out/${{ env.ZIPNAME }}
            asset_name: "TermuxDockerCompatible-KernelRedmi-9-9S-Pro-ProMax-miatoll.zip"
            tag: "redmi-note-9"
            release_name: "Redmi Note 9/9S/Pro/Pro Max"
