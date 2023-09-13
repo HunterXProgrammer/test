@@ -48,7 +48,7 @@ jobs:
       - name: Generate build status and build deps
         run: |
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }} ${{ env.KERNEL_REPO_DIR }}
-          cp kernel-continuous-build-finish build-status
+          mv kernel-continuous-build-finish build-status
           zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}
     
       - name: Upload build deps
@@ -109,7 +109,7 @@ jobs:
         run: |
           echo "$(cat ./build-status/kernel-continuous-build-finish)"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO }} ${{ env.KERNEL_REPO_DIR }}
-          cp kernel-continuous-build-finish build-status
+          mv kernel-continuous-build-finish build-status
           zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}
 
   finished-build:
