@@ -185,3 +185,9 @@ jobs:
            release_name: "Redmi Note 9/9S/Pro/Pro Max"
            body: "Termux Docker compatible kernel for Redmi Note 9/9S/Pro/Pro Max"
            overwrite: true
+
+      - name: Delete Artifact
+        if: always()
+        uses: geekyeggo/delete-artifact@v2
+        with:
+           name: "*"
