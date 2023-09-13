@@ -8,6 +8,7 @@ concurrency:
   
 env:
   KERNEL_REPO: "HunterXProgrammer/Termux-Docker-Kernel-Redmi-Xiaomi"
+  KERNEL_REPO_DIR: "Termux-Docker-Kernel-Redmi-Xiaomi"
   KERNEL_REPO_BRANCH: "documentation"
   
 jobs:
@@ -38,24 +39,27 @@ jobs:
         run: |
           mkdir -p build-deps
           mkdir -p build-status
-          docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && pkg install -y git && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO }} && cd ${{ env.KERNEL_REPO }} && export TERM=xterm-256color && timeout 1m bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
-        
+          ls -rla ${{ env.KERNEL_REPO }}
+          docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && exit 0"
+          docker mv ${{ env.KERNEL_REPO_DIR }} kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
+          docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "cd ${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 1m bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+
       - name: Generate build status and build deps
         run: |
-          docker mv kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO }} ${{ env.KERNEL_REPO }}
+          docker mv kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }} ${{ env.KERNEL_REPO_DIR }}
           mv kernel-continuous-build-finish build-status
-          zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO }}.zip ${{ env.KERNEL_REPO }}
+          zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}
     
       - name: Upload build deps
         uses: actions/upload-artifact@v3
         with:
-          name: build-deps-${{ env.target_arch }}-${{ env.KERNEL_REPO }}
+          name: build-deps-${{ env.target_arch }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-deps
           
       - name: Upload build status
         uses: actions/upload-artifact@v3
         with:
-          name: build-status-${{ env.archname }}-${{ env.KERNEL_REPO }}
+          name: build-status-${{ env.archname }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-status
 
   build-1:
@@ -78,13 +82,13 @@ jobs:
       - name: Download build deps
         uses: actions/download-artifact@v3
         with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO }}
+          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-deps
           
       - name: Download build status
         uses: actions/download-artifact@v3
         with:
-          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO }}
+          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-status
           
       - name: Build packages
@@ -93,19 +97,19 @@ jobs:
           if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
             exit 0
           fi
-          unzip -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO }}.zip -d ./
-          rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO }}.zip
-          ls -rla ${{ env.KERNEL_REPO }}
+          unzip -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
+          rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
+          ls -rla ${{ env.KERNEL_REPO_DIR }}
           docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && exit 0"
-          docker mv ${{ env.KERNEL_REPO }} kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO }}
-          docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "cd ${{ env.KERNEL_REPO }} && export TERM=xterm-256color && timeout 1m bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+          docker mv ${{ env.KERNEL_REPO_DIR }} kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
+          docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "cd ${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 1m bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
         
       - name: Generate build status and build deps
         run: |
           echo "$(cat ./build-status/kernel-continuous-build-finish)"
-          docker mv kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO }} ${{ env.KERNEL_REPO }}
+          docker mv kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO }} ${{ env.KERNEL_REPO_DIR }}
           mv kernel-continuous-build-finish build-status
-          zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO }}.zip ${{ env.KERNEL_REPO }}
+          zip -r9 build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}
 
   finished-build:
     runs-on: ubuntu-latest
@@ -127,31 +131,31 @@ jobs:
       - name: Download build deps
         uses: actions/download-artifact@v3
         with:
-          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO }}
+          name: build-deps-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-deps
           
       - name: Download build status
         uses: actions/download-artifact@v3
         with:
-          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO }}
+          name: build-status-${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}
           path: ./build-status
           
       - name: Check build status
         run: |
           echo "$(cat ./build-status/kernel-continuous-build-finish)"
-          
+          ls -rla ${{ env.KERNEL_REPO_DIR }}
           if [ "$(cat ./build-status/kernel-continuous-build-finish)" = "true" ]; then
             echo "[ERROR]: Need more time to build!"
           exit 1
           fi
           
-          echo "ZIPNAME=$(basename $(ls out/*\.zip | head -n 1))" >> $GITHUB_ENV
+          echo "ZIPNAME=$(cd ${{ env.KERNEL_REPO_DIR }} && basename $(ls out/*\.zip | head -n 1))" >> $GITHUB_ENV
 
       - name: Upload Release
         uses: svenstaro/upload-release-action@v2
         with:
            repo_token: ${{ secrets.GITHUB_TOKEN }}
-           file: kernel-repo/out/${{ env.ZIPNAME }}
+           file: ${{ env.KERNEL_REPO_DIR }}/out/${{ env.ZIPNAME }}
            asset_name: "TermuxDockerCompatible-KernelRedmi-9-9S-Pro-ProMax-miatoll.zip"
            tag: "redmi-note-9"
            release_name: "Redmi Note 9/9S/Pro/Pro Max"
