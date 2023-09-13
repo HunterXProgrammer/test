@@ -33,6 +33,7 @@ jobs:
         with:
           repository: "${{ env.KERNEL_REPO }}"
           ref: "${{ env.KERNEL_REPO_BRANCH }}"
+          path: "${{ env.KERNEL_REPO_DIR }}"
           fetch-depth: 1
 
       - name: Build packages
