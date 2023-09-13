@@ -12,7 +12,7 @@ jobs:
 
       - name: Install Docker
         run: |
-          docker pull aarch64/hello-world
+          docker run aarch64/hello-world
         
 
         
