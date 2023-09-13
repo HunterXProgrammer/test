@@ -117,7 +117,7 @@ jobs:
         run: |
           unzip -qq -o build-image/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-image/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
-          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
+          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
           rm ${{ env.KERNEL_REPO_DIR }}.tar
           unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
