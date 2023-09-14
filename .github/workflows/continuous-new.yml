@@ -31,9 +31,9 @@ jobs:
       - name: Prepare build image
         run: |
           mkdir -p ./build-deps ./build-status ./build-image
-          # docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "sleep infinity"
-          # docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "yes | pkg upgrade -y && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }}"
-          docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }}"
+          docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "sleep infinity"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "yes | pkg upgrade -y && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }}"
+          # docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }}"
           docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
           docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
           echo false > kernel-continuous-build-finish
@@ -125,13 +125,13 @@ jobs:
           docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity"
           docker cp out kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
           rm -rf out
+          docker exec -u root kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && chown -R system:system out && chgrp -R system out"
           docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
           docker stop kernel-builder-${{ matrix.platform }}
           docker rm -f kernel-builder-${{ matrix.platform }}
           docker rmi -f $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-          exit 1
 
       - name: Generate build status and build deps
         if: ${{ env.build_completed != 'true' }}
