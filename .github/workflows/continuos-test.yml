@@ -126,7 +126,7 @@ jobs:
           docker cp out kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
           rm -rf out
           docker exec -u root kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && chown -R system:system out && chgrp -R system out"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish && find ./out -type l -delete || echo false > kernel-continuous-build-finish && find ./out -type l -delete"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
           docker stop kernel-builder-${{ matrix.platform }}
@@ -216,7 +216,7 @@ jobs:
           docker cp out kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
           rm -rf out
           docker exec -u root kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && chown -R system:system out && chgrp -R system out"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish && find ./out -type l -delete || echo false > kernel-continuous-build-finish && find ./out -type l -delete"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
           docker stop kernel-builder-${{ matrix.platform }}
@@ -306,7 +306,7 @@ jobs:
           docker cp out kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
           rm -rf out
           docker exec -u root kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && chown -R system:system out && chgrp -R system out"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish && find ./out -type l -delete || echo false > kernel-continuous-build-finish && find ./out -type l -delete"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
           docker stop kernel-builder-${{ matrix.platform }}
@@ -396,7 +396,7 @@ jobs:
           docker cp out kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
           rm -rf out
           docker exec -u root kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && chown -R system:system out && chgrp -R system out"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish && find ./out -type l -delete || echo false > kernel-continuous-build-finish && find ./out -type l -delete"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
           docker stop kernel-builder-${{ matrix.platform }}
@@ -486,7 +486,7 @@ jobs:
           docker cp out kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
           rm -rf out
           docker exec -u root kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && chown -R system:system out && chgrp -R system out"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish && find ./out -type l -delete || echo false > kernel-continuous-build-finish && find ./out -type l -delete"
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
           docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
           docker stop kernel-builder-${{ matrix.platform }}
@@ -541,9 +541,8 @@ jobs:
 
       - name: Check build status
         run: |
-          echo "$(cat ./build-status/kernel-continuous-build-finish)"
           if [ "$(cat ./build-status/kernel-continuous-build-finish)" != "true" ]; then
-            echo "[ERROR]: Need more time to build!"
+            echo "[ERROR]: Needs more time to build!"
             exit 1
           fi
 
@@ -558,6 +557,10 @@ jobs:
           unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
           echo "ZIPNAME=$(basename $(ls out/*\.zip | head -n 1))" >> $GITHUB_ENV
+          if [ -z "$ZIPNAME" ]; then
+            echo "[ERROR]: Needs more time to build!"
+            exit 1
+          fi
 
       - name: Upload Release
         uses: svenstaro/upload-release-action@v2
