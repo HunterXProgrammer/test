@@ -541,6 +541,7 @@ jobs:
 
       - name: Check build status
         run: |
+          echo "$(cat ./build-status/kernel-continuous-build-finish)"
           if [ "$(cat ./build-status/kernel-continuous-build-finish)" != "true" ]; then
             echo "[ERROR]: Need more time to build!"
             exit 1
