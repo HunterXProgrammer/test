@@ -33,7 +33,7 @@ jobs:
           mkdir -p ./build-deps ./build-status ./build-image
           # docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "sleep infinity"
           # docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "yes | pkg upgrade -y && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }}"
-          docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }}"
+          docker run --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "yes | pkg upgrade -y && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }}"
           docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
           docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
           echo false > kernel-continuous-build-finish
