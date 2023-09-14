@@ -130,6 +130,7 @@ jobs:
           docker stop kernel-builder-${{ matrix.platform }}
           docker rm -f kernel-builder-${{ matrix.platform }}
           docker rmi -f $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
+          exit 1
 
       - name: Generate build status and build deps
         if: ${{ env.build_completed != 'true' }}
