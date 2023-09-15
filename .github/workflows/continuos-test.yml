@@ -28,18 +28,11 @@ jobs:
             echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
           fi
 
-      - name: Free additional disk space
-        if: ${{ env.build_completed != 'true' }}
-        run: |
-          sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') mono-runtime-common monodoc-manual ruby
-          sudo apt autoremove -yq
-          sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
-
       - name: Prepare build image
         run: |
           mkdir -p ./build-deps ./build-status ./build-image
           docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "sleep infinity"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "while ! yes | pkg upgrade -y; do :; done && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }} && curl -SL -o clang+llvm-16.0.6-aarch64-linux-gnu.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/clang+llvm-16.0.6-aarch64-linux-gnu.tar.xz && tar -xf clang+llvm-16.0.6-aarch64-linux-gnu.tar.xz && rm clang+llvm-16.0.6-aarch64-linux-gnu.tar.xz"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "while ! yes | pkg upgrade -y; do :; done && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }}"
           docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
           docker save $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') | zip -r9q ${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -
           printf "@ -\n@=${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.tar\n" | zipnote -w ${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
