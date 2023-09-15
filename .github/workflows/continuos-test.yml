@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: build-kernel-termux-continuous
+  group: build-kernel-termux-continuous-testing
 
 env:
   KERNEL_REPO: "HunterXProgrammer/Termux-Docker-Kernel-Redmi-Xiaomi"
