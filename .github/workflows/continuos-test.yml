@@ -34,13 +34,14 @@ jobs:
           docker run -d --name kernel-builder-${{ matrix.platform }} termux/termux-docker:${{ matrix.platform }} bash -c "sleep infinity"
           docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "while ! yes | pkg upgrade -y; do :; done && yes | pkg install -y git proot-distro which qemu-user-aarch64 && git clone --depth=1 https://github.com/${{ env.KERNEL_REPO }} -b ${{ env.KERNEL_REPO_BRANCH }} ${{ env.KERNEL_REPO_DIR }} && curl -SL -o clang+llvm-16.0.6-aarch64-linux-gnu.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.6/clang+llvm-16.0.6-aarch64-linux-gnu.tar.xz && tar -xf clang+llvm-16.0.6-aarch64-linux-gnu.tar.xz && rm clang+llvm-16.0.6-aarch64-linux-gnu.tar.xz && ls clang+llvm-16.0.6-aarch64-linux-gnu"
           docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
-          docker save -o ${{ env.KERNEL_REPO_DIR }}.tar $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
+          docker save $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') | zip -r9q ${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -
+          printf "@ -\n@=${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.tar\n" | zipnote -w ${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
           echo false > kernel-continuous-build-finish
 
       - name: Generate build status and build deps
         run: |
           mv kernel-continuous-build-finish build-status
-          zip -r9mq build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip ${{ env.KERNEL_REPO_DIR }}.tar
+          mv ${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip build-deps
 
       - name: Upload build status
         uses: actions/upload-artifact@v3
@@ -83,13 +84,6 @@ jobs:
             echo "build_complete=true" >> $GITHUB_ENV
           fi
 
-      - name: Free additional disk space
-        if: ${{ env.build_completed != 'true' }}
-        run: |
-          sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') mono-runtime-common monodoc-manual ruby
-          sudo apt autoremove -yq
-          sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
-
       - name: Download build deps
         if: ${{ env.build_completed != 'true' }}
         uses: actions/download-artifact@v3
@@ -100,28 +94,22 @@ jobs:
       - name: Build kernel
         if: ${{ env.build_completed != 'true' }}
         run: |
-          unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
+          unzip -p build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip | docker load
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
-          docker image load -i ${{ env.KERNEL_REPO_DIR }}.tar
-          rm ${{ env.KERNEL_REPO_DIR }}.tar
-          unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
-          rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
-          docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity"
-          docker cp out kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}
-          rm -rf out
-          docker exec -u root kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && chown -R system:system out && chgrp -R system out"
-          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && ls -rla && pwd && timeout 4h bash build-termux.sh && echo true > kernel-continuous-build-finish && find ./out -type l -delete || echo false > kernel-continuous-build-finish && find ./out -type l -delete"
-          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
-          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
-          docker stop kernel-builder-${{ matrix.platform }}
-          docker rm -f kernel-builder-${{ matrix.platform }}
+          docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity".
           docker rmi -f $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 1m bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
+          docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "proot-distro remove ubuntu-kernel-builder | true"
+          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/kernel-continuous-build-finish .
+          docker commit -p kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
+          docker save $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') | zip -r9q ${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -
+          printf "@ -\n@=${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.tar\n" | zipnote -w ${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
 
       - name: Generate build status and build deps
         if: ${{ env.build_completed != 'true' }}
         run: |
           mv kernel-continuous-build-finish build-status
-          zip -r9mq build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip out
+          mv ${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip build-deps
 
       - name: Upload build status
         if: ${{ env.build_completed != 'true' }}
@@ -142,7 +130,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    needs: build-5
+    needs: build-1
     strategy:
       fail-fast: false
       matrix:
@@ -178,8 +166,11 @@ jobs:
 
       - name: Prepare Release
         run: |
-          unzip -qq -o build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
+          unzip -p build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip | docker load
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
+          docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity".
+          docker rmi -f $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
+          docker cp kernel-builder-${{ matrix.platform }}:/data/data/com.termux/files/home/${{ env.KERNEL_REPO_DIR }}/out .
           echo "ZIPNAME=$(basename $(ls out/*\.zip | head -n 1))" >> $GITHUB_ENV
           if [ -z "$ZIPNAME" ]; then
             echo "[ERROR]: Needs more time to build!"
