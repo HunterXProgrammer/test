@@ -101,8 +101,10 @@ jobs:
       - name: Build kernel
         if: ${{ env.build_completed != 'true' }}
         run: |
-          unzip -p build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip | docker load
+          unzip -p build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip -d ./
           rm -rf build-deps/${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.zip
+          docker load -i ${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.tar
+          rm -rf ${{ env.arch_name }}-${{ env.KERNEL_REPO_DIR }}.tar
           docker run -d --name kernel-builder-${{ matrix.platform }} $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]') bash -c "sleep infinity".
           docker rmi -f $(echo ${{ env.KERNEL_REPO_DIR }} | tr '[:upper:]' '[:lower:]')
           docker exec -u system kernel-builder-${{ matrix.platform }} bash -c "cd \$HOME/${{ env.KERNEL_REPO_DIR }} && export TERM=xterm-256color && timeout 1m bash build-termux.sh && echo true > kernel-continuous-build-finish || echo false > kernel-continuous-build-finish"
