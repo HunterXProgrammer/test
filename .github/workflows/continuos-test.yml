@@ -28,6 +28,13 @@ jobs:
             echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
           fi
 
+      - name: Free additional disk space
+        if: ${{ env.build_completed != 'true' }}
+        run: |
+          sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') mono-runtime-common monodoc-manual ruby
+          sudo apt autoremove -yq
+          sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+
       - name: Prepare build image
         run: |
           mkdir -p ./build-deps ./build-status ./build-image
@@ -71,6 +78,13 @@ jobs:
           else
             echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
           fi
+
+      - name: Free additional disk space
+        if: ${{ env.build_completed != 'true' }}
+        run: |
+          sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') mono-runtime-common monodoc-manual ruby
+          sudo apt autoremove -yq
+          sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
 
       - name: Download build status
         uses: actions/download-artifact@v3
@@ -144,6 +158,13 @@ jobs:
           else
             echo "arch_name=${{ matrix.platform }}" >> $GITHUB_ENV
           fi
+
+      - name: Free additional disk space
+        if: ${{ env.build_completed != 'true' }}
+        run: |
+          sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') mono-runtime-common monodoc-manual ruby
+          sudo apt autoremove -yq
+          sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
 
       - name: Download build status
         uses: actions/download-artifact@v3
