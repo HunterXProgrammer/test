@@ -10,7 +10,6 @@ jobs:
     steps:
     - name: Pause
       run: |
-          yes | sudo apt upgrade -y
           sleep 10
     - uses: actions/checkout@v3
     - name: Setup tmate session
