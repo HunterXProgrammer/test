@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   
 concurrency:
-  group: ci-test
+  group: ci2-test
 jobs:
   build:
     runs-on: ubuntu-latest
