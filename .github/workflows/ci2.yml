@@ -57,7 +57,7 @@ jobs:
           gclient sync
           cd src
 
-          flutter/tools/gn --runtime-mode release --target-os linux --linux --linux-cpu arm64 --lto --stripped
+          flutter/tools/gn --runtime-mode release --target-os linux --linux-cpu arm64 --lto --stripped --embedder-for-target
           ninja -C out/linux_release_arm64
 
 
