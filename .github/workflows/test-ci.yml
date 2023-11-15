@@ -1,0 +1,101 @@
+name: Test CI
+on:
+  workflow_dispatch:
+  
+concurrency:
+  group: ci2-test
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
