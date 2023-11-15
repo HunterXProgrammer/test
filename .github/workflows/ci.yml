@@ -9,10 +9,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Pause
-      run: |
-          sleep 10
-    - uses: actions/checkout@v3
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v1
+        with:
+          remove-android: 'true'
+          remove-dotnet: 'true'
+          remove-haskell: 'true'
+
+      - name: CHeck Space
+        run: |
+          echo "Free space:"
+          df -h
+          
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
       
