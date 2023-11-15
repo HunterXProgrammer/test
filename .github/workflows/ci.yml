@@ -8,10 +8,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Space Before Cleanup
-        run: |
-          echo "Free space:"
-          df -h
           
       - name: Maximize build space
         uses: AdityaGarg8/remove-unwanted-software@v1
