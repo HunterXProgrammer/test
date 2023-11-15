@@ -15,7 +15,7 @@ jobs:
           remove-dotnet: 'true'
           remove-haskell: 'true'
 
-      - name: CHeck Space
+      - name: Check Space
         run: |
           echo "Free space:"
           df -h
