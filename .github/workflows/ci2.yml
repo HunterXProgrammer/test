@@ -1,0 +1,41 @@
+name: CI Test
+on:
+  workflow_dispatch:
+  
+concurrency:
+  group: ci-test
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Space Before Cleanup
+        run: |
+          echo "Free space:"
+          df -h
+          
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 512
+          swap-size-mb: 1024
+          remove-android: 'true'
+          remove-dotnet: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+          
+      - name: Free additional disk space
+        if: ${{ env.build_completed != 'true' }}
+        run: |
+          sudo apt purge -y $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') mono-runtime-common monodoc-manual ruby
+          sudo apt autoremove -y
+          sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+
+      - name: Check Space  After Cleanup
+        run: |
+          echo "Free space:"
+          df -h
+          
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+      
