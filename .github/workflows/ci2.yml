@@ -30,12 +30,6 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
-
-
-      - name: Check Space  After Cleanup
-        run: |
-          echo "Free space:"
-          df -h
           
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
