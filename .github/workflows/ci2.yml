@@ -30,7 +30,37 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
-          
+
+      - name: Setup Build
+        run: |
+          mkdir -p project
+          cd project
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools
+          export PATH=$(pwd)/depot_tools:$PATH
+          mkdir engine
+          cd engine
+          echo 'solutions = [
+            {
+              "managed": False,
+              "name": "src/flutter",
+              "url": "https://github.com/flutter/engine.git",
+              "custom_deps": {},
+              "deps_file": "DEPS",
+              "safesync_url": "",
+              "custom_vars": {
+                "download_emsdk": True,
+              },
+            },
+          ]
+          ' > .gclient
+
+          gclient sync
+
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
-      
+        with:
+          detached: 'true'
+
+      - name: Wait For Build
+        run: |
+            sleep infinity
