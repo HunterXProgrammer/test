@@ -55,6 +55,19 @@ jobs:
           ' > .gclient
 
           gclient sync
+          cd src
+
+          flutter/tools/gn --runtime-mode release --target-os linux --linux --web --linux-cpu arm64 --lto --stripped
+          ninja -C out/linux_release_arm64
+
+
+
+
+
+
+
+
+
 
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
