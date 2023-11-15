@@ -20,10 +20,6 @@ jobs:
           remove-dotnet: 'true'
           remove-haskell: 'true'
 
-      - name: Check Space  After Cleanup
-        run: |
-          echo "Free space:"
-          df -h
           
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
