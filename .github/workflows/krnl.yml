@@ -1,0 +1,80 @@
+name: kernel build
+on:
+  workflow_dispatch:
+  
+concurrency:
+  group: ci2-test
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Space Before Cleanup
+        run: |
+          echo "Free space:"
+          df -h
+
+      - name: Free additional disk space
+        if: ${{ env.build_completed != 'true' }}
+        run: |
+          sudo apt purge -yq $(dpkg -l | grep '^ii' | awk '{ print $2 }' | grep -P '(cabal-|dotnet-|ghc-|libmono|php|aspnetcore)') mono-runtime-common monodoc-manual ruby &>/dev/null
+          sudo apt autoremove -yq &>/dev/null
+          sudo rm -rf /opt/hostedtoolcache /usr/local /usr/share/dotnet /usr/share/swift
+          
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 512
+          swap-size-mb: 1024
+          remove-android: 'true'
+          remove-dotnet: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+
+      - name: Setup Build
+        run: |
+          exit 0
+          mkdir -p project
+          cd project
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools
+          export PATH=$(pwd)/depot_tools:$PATH
+          mkdir engine
+          cd engine
+          echo 'solutions = [
+            {
+              "managed": False,
+              "name": "src/flutter",
+              "url": "https://github.com/flutter/engine.git",
+              "custom_deps": {},
+              "deps_file": "DEPS",
+              "safesync_url": "",
+              "custom_vars": {
+                "download_emsdk": True,
+              },
+            },
+          ]
+          ' > .gclient
+
+          gclient sync
+          cd src
+
+          flutter/tools/gn --runtime-mode release --target-os linux --linux-cpu arm64 --lto --stripped --embedder-for-target
+          ninja -C out/linux_release_arm64
+
+
+
+
+
+
+
+
+
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: 'true'
+
+      - name: Wait For Build
+        run: |
+            sleep infinity
